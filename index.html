@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>מכונת מזל - בחירת שמות</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f7f7f7;
+            --text-color: #1a1a1a;
+            --gray-light: #e0e0e0;
+            --gray-dark: #333333;
+            --accent: #000000;
+            --lever-color: #ff3b3b;
+            --lever-dark: #cc0000;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Heebo', sans-serif;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            width: 100vw;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        /* --- Screens --- */
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        /* --- Splash Screen --- */
+        #screen-splash {
+            background-color: #ffffff;
+            cursor: pointer;
+            z-index: 100;
+            text-align: center;
+        }
+
+        .splash-title {
+            font-size: 2.2rem;
+            font-weight: 900;
+            color: var(--accent);
+            margin-bottom: 20px;
+            line-height: 1.3;
+            padding: 0 20px;
+        }
+
+        .splash-subtitle {
+            font-size: 1rem;
+            color: #999999;
+            font-weight: 400;
+            animation: pulseHint 1.5s infinite ease-in-out;
+        }
+
+        @keyframes pulseHint {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
+        }
+
+        /* --- UI Elements --- */
+        .card {
+            background: #ffffff;
+            padding: 40px 30px;
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            text-align: center;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 16px 20px;
+            font-size: 1.2rem;
+            border: 2px solid var(--gray-light);
+            border-radius: 16px;
+            outline: none;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: border-color 0.3s ease;
+            user-select: text;
+        }
+
+        input[type="text"]::placeholder {
+            color: #999;
+        }
+
+        input[type="text"]:focus {
+            border-color: var(--accent);
+        }
+
+        .btn-start {
+            background-color: var(--accent);
+            color: #ffffff;
+            border: none;
+            padding: 18px 40px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 0 var(--gray-dark), 0 15px 20px rgba(0,0,0,0.2);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            width: 100%;
+            max-width: 300px;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn-start:active {
+            transform: translateY(8px);
+            box-shadow: 0 0px 0 var(--gray-dark), 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        /* --- Slot Machine Main Casing --- */
+        .machine-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        /* --- Slot Casing --- */
+        .slot-casing {
+            width: 250px;
+            height: 350px;
+            background: #ffffff;
+            border: 5px solid var(--accent);
+            border-radius: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: inset 0 10px 20px rgba(0,0,0,0.05), 0 15px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* --- Winner Selection Window (Center) --- */
+        .selection-window {
+            position: absolute;
+            top: 135px;
+            width: 100%;
+            height: 80px;
+            border-top: 3px solid #000;
+            border-bottom: 3px solid #000;
+            background: rgba(255,255,255,0.7);
+            box-sizing: border-box;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        /* --- Slot Reel (Moving List) --- */
+        .slot-reel {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 5;
+            padding-top: 135px;
+        }
+
+        .reel-item {
+            height: 80px;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.1rem;
+            font-weight: 900;
+            color: var(--accent);
+            white-space: nowrap;
+            will-change: transform;
+            transition: color 1s ease;
+        }
+
+        /* Non-winning names turn light gray */
+        .slot-reel.finished .reel-item {
+            color: #d0d0d0;
+        }
+
+        /* Winning item starts black, then transitions to gray via .faded */
+        .slot-reel.finished .winning-item {
+            color: #000000;
+            transition: color 1.5s ease;
+        }
+
+        .slot-reel.finished .winning-item.faded {
+            color: #d0d0d0;
+        }
+
+        /* --- Lever (Red) --- */
+        .lever-track {
+            width: 20px;
+            height: 250px;
+            background: var(--gray-light);
+            border-radius: 10px;
+            position: relative;
+            margin-right: 25px;
+            border: 3px solid var(--accent);
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.1);
+        }
+
+        .lever-handle {
+            width: 50px;
+            height: 50px;
+            background: var(--lever-color);
+            border-radius: 50%;
+            position: absolute;
+            top: 0;
+            left: -15px;
+            cursor: pointer;
+            box-shadow: 0 10px 0 var(--lever-dark), 0 10px 20px rgba(0,0,0,0.3);
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            -webkit-tap-highlight-color: transparent;
+            z-index: 20;
+        }
+
+        .lever-handle:active {
+            transform: translateY(200px);
+            box-shadow: 0 0px 0 var(--lever-dark), 0 5px 10px rgba(0,0,0,0.2);
+        }
+
+        .lever-handle.disabled {
+            background-color: #ff9999;
+            box-shadow: 0 10px 0 #cc6666, 0 10px 20px rgba(0,0,0,0.1);
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        /* --- Effects --- */
+        @keyframes popGlow {
+            0% { box-shadow: 0 10px 20px rgba(0,0,0,0.05), 0 0 0px rgba(0,0,0,0); border-color: var(--accent); }
+            50% { box-shadow: 0 0px 0px rgba(0,0,0,0), 0 0 50px rgba(0,0,0,0.4); border-color: #555; }
+            100% { box-shadow: 0 10px 20px rgba(0,0,0,0.05), 0 0 20px rgba(0,0,0,0.2); border-color: var(--accent); }
+        }
+
+        .winner-effect {
+            animation: popGlow 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+        
+        .slot-reel.spinning .reel-item {
+            filter: blur(6px);
+            opacity: 0.6;
+        }
+
+        /* Floating + Glowing animation for the chosen name */
+        @keyframes floatAndGlow {
+            0% { transform: scale(1.4) translateY(0px); text-shadow: 0 0 5px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.25); }
+            50% { transform: scale(1.4) translateY(-5px); text-shadow: 0 0 15px rgba(0,0,0,0.4), 0 8px 15px rgba(0,0,0,0.25); }
+            100% { transform: scale(1.4) translateY(0px); text-shadow: 0 0 5px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.25); }
+        }
+
+        .winning-item {
+            animation: floatAndGlow 2s ease-in-out infinite;
+            z-index: 20;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Screen 0: Splash Screen -->
+    <div id="screen-splash" class="screen active" onclick="goToNameScreen()">
+        <div>
+            <div class="splash-title">צוות מדריכי שכבג 26' הכוכבים</div>
+            <div class="splash-subtitle">תלחץ על המסך</div>
+        </div>
+    </div>
+
+    <!-- Screen 1: Welcome / Input -->
+    <div id="screen-welcome" class="screen">
+        <div class="card">
+            <input type="text" id="userNameInput" value="" placeholder="הכנס שם...">
+            <button class="btn-start" onclick="startApp()">התחל</button>
+        </div>
+    </div>
+
+    <!-- Screen 2: Slot Machine -->
+    <div id="screen-main" class="screen">
+        <div class="machine-wrap">
+            <!-- Casing + Spinning Reel -->
+            <div class="slot-casing" id="slotCasing">
+                <div class="selection-window"></div>
+                <div class="slot-reel" id="slotReel">
+                    <div class="reel-item">תן לו בסיבוב</div>
+                </div>
+            </div>
+
+            <!-- Mechanical Lever Track + Handle -->
+            <div class="lever-track">
+                <div class="lever-handle" id="leverHandle" title="משוך כדי לסובב"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const RAW_NAMES_LIST = [
+            "תאי אביטן", "ענבר אשכנזי", "אביד בן חיון", "עידו אוחיון", "עידו אורגד", 
+            "אסיף גלעד", "עמית כהן", "אלעד ניניו", "אמיר ללקין", "עדי כרמי", 
+            "שירה אלקיים", "ענבר זעפרני", "יהב מתיתיהו", "שחר חזקאל", "אלעד הימל", 
+            "יערה גוגוס", "עידו רוט", "זיו פרומוביץ", "גל ניצני", "מתן יריב", 
+            "דור זרחי", "עדי עטיה", "אופיר קיוויתי", "עדי שוורץ", "אגם בן יעקוב", 
+            "לירי גב", "עידו קורן", "איתי גור", "נדב עיני", "שחר פייסט", 
+            "אריאל כורזים", "תור גייקובס", "הדס רסקין", "עידן כפרי", "דניאל רחמים", 
+            "אלון בן דהן", "עלמה סרוסי", "תמר בן חיים", "ליהי נחמיה", "שי קפטריק", 
+            "עידו בן ארי", "יובל אלה", "רואי לנג", "אגם מוזס", "אור טמיר", 
+            "יואב חוזה", "זהר קרטלה", "עומר גורן", "תהל ורסנו", "דורון וויל", 
+            "נועם קריחלי", "תהל פאפיאר", "עדן סנסל", "מיקה סטריקובסקי", "יהב מלול", 
+            "אור ישראל", "יאיר פואה", "גילי שושן", "ארבל אלמוג", "תבור יאיר", 
+            "שי קורקידי", "איתן יום טוב", "אורי לב", "נוי גבאי", "אמילי ווקנין", 
+            "ליאן מולי", "יונתן יום טוב", "נועם גוגוס", "גיא שיוביץ", "גיא איוניר", 
+            "יואב מכלוף", "ליאור שלו", "שחר מילר", "מיקה אייזנברג", "יהלי שרייבר", 
+            "יונתן עבאדי", "הראל אוצטרו", "יואב הראל", "איתמר בנאדו", "בן אגמון", 
+            "שלומי יאגודייב", "מיכל שניידר", "גילי הדר", "רז כהן", "יובל כץ", 
+            "נועם", "שי-לי אסולין", "איתי סולימה", "קרני אבלסון", "מעיין רוזן"
+        ];
+
+        let activeNamesList = [...RAW_NAMES_LIST];
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playTickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.02);
+            
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.02);
+        }
+
+        function playWinSound() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const playNote = (freq, startTime, duration) => {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(freq, startTime);
+                
+                gain.gain.setValueAtTime(0, startTime);
+                gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+                gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(startTime);
+                osc.stop(startTime + duration);
+            };
+
+            const now = audioCtx.currentTime;
+            playNote(523.25, now, 0.4);
+            playNote(659.25, now + 0.1, 0.4);
+            playNote(783.99, now + 0.2, 0.4);
+            playNote(1046.50, now + 0.35, 0.8);
+        }
+
+        function goToNameScreen() {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            document.getElementById('screen-splash').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('screen-welcome').classList.add('active');
+            }, 400);
+        }
+
+        function startApp() {
+            const inputVal = document.getElementById('userNameInput').value.trim().toLowerCase();
+            
+            if (inputVal !== "") {
+                activeNamesList = RAW_NAMES_LIST.filter(name => name.toLowerCase() !== inputVal);
+            } else {
+                activeNamesList = [...RAW_NAMES_LIST];
+            }
+
+            document.getElementById('screen-welcome').classList.remove('active');
+            setTimeout(() => {
+                document.getElementById('screen-main').classList.add('active');
+            }, 400);
+        }
+
+        const reel = document.getElementById('slotReel');
+        const handle = document.getElementById('leverHandle');
+        const casing = document.getElementById('slotCasing');
+
+        let isSpinning = false;
+        let tickFrameId = null;
+
+        handle.addEventListener('mousedown', initiatePull);
+        handle.addEventListener('touchstart', initiatePull);
+
+        function initiatePull(e) {
+            if (isSpinning) return;
+            window.addEventListener('mouseup', triggerSpin, { once: true });
+            window.addEventListener('touchend', triggerSpin, { once: true });
+        }
+
+        function triggerSpin() {
+            isSpinning = true;
+            handle.classList.add('disabled');
+            casing.classList.remove('winner-effect');
+            
+            reel.classList.remove('finished');
+            reel.classList.add('spinning');
+
+            const oldWinner = reel.querySelector('.winning-item');
+            if(oldWinner) {
+                oldWinner.classList.remove('winning-item', 'faded');
+            }
+
+            const winnerName = activeNamesList[Math.floor(Math.random() * activeNamesList.length)];
+            
+            const reelSize = 80; 
+            let fullReelNames = [];
+            for (let i = 0; i < reelSize; i++) {
+                fullReelNames.push(activeNamesList[Math.floor(Math.random() * activeNamesList.length)]);
+            }
+            
+            const stopIndex = reelSize - 5;
+            fullReelNames[stopIndex] = winnerName; 
+
+            let spinningReelHTML = '';
+            fullReelNames.forEach(n => {
+                spinningReelHTML += `<div class="reel-item">${n}</div>`;
+            });
+            reel.innerHTML = spinningReelHTML;
+
+            reel.style.transition = 'none';
+            reel.style.transform = 'translateY(0px)';
+            
+            reel.offsetHeight; 
+
+            const itemHeight = 80;
+            const stopPosition = -(stopIndex * itemHeight); 
+
+            reel.style.transition = 'transform 5s cubic-bezier(0.1, 0.7, 0.1, 1)';
+            reel.style.transform = `translateY(${stopPosition}px)`;
+
+            // Track rolling motion to play ticks synchronously as names pass
+            let lastTickIndex = -1;
+            function checkTick() {
+                if (!isSpinning) return;
+                const transformVal = window.getComputedStyle(reel).transform;
+                if (transformVal !== 'none') {
+                    const matrixValues = transformVal.split('(')[1].split(')')[0].split(',');
+                    const currentY = parseFloat(matrixValues[5] || matrixValues[13] || 0);
+                    const currentItemIndex = Math.floor(Math.abs(currentY) / itemHeight);
+                    
+                    if (currentItemIndex !== lastTickIndex) {
+                        playTickSound();
+                        lastTickIndex = currentItemIndex;
+                    }
+                }
+                tickFrameId = requestAnimationFrame(checkTick);
+            }
+            tickFrameId = requestAnimationFrame(checkTick);
+
+            setTimeout(() => {
+                if (tickFrameId) cancelAnimationFrame(tickFrameId);
+
+                reel.classList.remove('spinning');
+                reel.classList.add('finished');
+                casing.classList.add('winner-effect');
+                
+                const winningEl = reel.children[stopIndex];
+                if(winningEl) {
+                    winningEl.classList.add('winning-item');
+
+                    // Fade back to gray after 3 seconds
+                    setTimeout(() => {
+                        winningEl.classList.add('faded');
+                    }, 3000);
+                }
+
+                playWinSound();
+
+                isSpinning = false;
+                handle.classList.remove('disabled');
+            }, 5000); 
+        }
+    </script>
+</body>
+</html>
