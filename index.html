@@ -196,19 +196,31 @@
             justify-content: center;
             font-size: 2.1rem;
             font-weight: 900;
-            color: var(--accent);
+            color: #1a1a1a;
             white-space: nowrap;
             will-change: transform;
-            transition: color 0.5s ease;
+            transition: color 1s ease, opacity 1s ease;
         }
 
-        /* שמות לא מנצחים הופכים לאפור בהיר */
+        /* שמות שאינם מנצחים הופכים לאפור מטושטש */
         .slot-reel.finished .reel-item {
-            color: #d0d0d0;
+            color: #cccccc !important;
+            opacity: 0.4;
         }
 
-        .slot-reel.finished .winning-item {
-            color: #000000;
+        /* השם הנבחר - שחור חזק ובולט ברגע הניצחון */
+        .slot-reel.finished .reel-item.winning-item {
+            color: #000000 !important;
+            opacity: 1 !important;
+            font-size: 2.3rem;
+            font-weight: 900;
+            transition: color 1.5s ease, opacity 1.5s ease;
+        }
+
+        /* לאחר הדיליי - מוחזר לאפור כמו השאר */
+        .slot-reel.finished .reel-item.winning-item.faded {
+            color: #cccccc !important;
+            opacity: 0.4 !important;
         }
 
         /* --- Lever (Red) --- */
@@ -256,7 +268,7 @@
         /* --- Effects --- */
         @keyframes popGlow {
             0% { box-shadow: 0 10px 20px rgba(0,0,0,0.05), 0 0 0px rgba(0,0,0,0); border-color: var(--accent); }
-            50% { box-shadow: 0 0px 0px rgba(0,0,0,0), 0 0 50px rgba(0,0,0,0.4); border-color: #555; }
+            50% { box-shadow: 0 0px 0px rgba(0,0,0,0), 0 0 50px rgba(0,0,0,0.4); border-color: #000; }
             100% { box-shadow: 0 10px 20px rgba(0,0,0,0.05), 0 0 20px rgba(0,0,0,0.2); border-color: var(--accent); }
         }
 
@@ -269,11 +281,11 @@
             opacity: 0.6;
         }
 
-        /* Floating + Glowing animation for the chosen name */
+        /* Floating animation for the chosen name */
         @keyframes floatAndGlow {
-            0% { transform: scale(1.4) translateY(0px); text-shadow: 0 0 5px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.25); }
-            50% { transform: scale(1.4) translateY(-5px); text-shadow: 0 0 15px rgba(0,0,0,0.4), 0 8px 15px rgba(0,0,0,0.25); }
-            100% { transform: scale(1.4) translateY(0px); text-shadow: 0 0 5px rgba(0,0,0,0.2), 0 8px 15px rgba(0,0,0,0.25); }
+            0% { transform: scale(1.15) translateY(0px); text-shadow: 0 0 8px rgba(0,0,0,0.3); }
+            50% { transform: scale(1.15) translateY(-4px); text-shadow: 0 0 15px rgba(0,0,0,0.5); }
+            100% { transform: scale(1.15) translateY(0px); text-shadow: 0 0 8px rgba(0,0,0,0.3); }
         }
 
         .winning-item {
@@ -345,6 +357,26 @@
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         
+        function playTickSound() {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.02);
+            
+            gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.02);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.02);
+        }
+
         function playWinSound() {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             
@@ -373,7 +405,6 @@
             playNote(1046.50, now + 0.35, 0.8);
         }
 
-        // מעבר מסך הפתיחה למסך הזנת שם
         function goToNameScreen() {
             if(audioCtx.state === 'suspended') audioCtx.resume();
             document.getElementById('screen-splash').classList.remove('active');
@@ -382,11 +413,9 @@
             }, 400);
         }
 
-        // מעבר ממסך הזנת שם למכונת המזל (תוך סינון השם שהוקלד)
         function startApp() {
             const inputVal = document.getElementById('userNameInput').value.trim().toLowerCase();
             
-            // סינון השם שהוקלד מהרשימה (השוואה מדויקת או חלקית לפי בחירתך, כאן מדויקת)
             if (inputVal !== "") {
                 activeNamesList = RAW_NAMES_LIST.filter(name => name.toLowerCase() !== inputVal);
             } else {
@@ -404,6 +433,8 @@
         const casing = document.getElementById('slotCasing');
 
         let isSpinning = false;
+        let tickFrameId = null;
+
         handle.addEventListener('mousedown', initiatePull);
         handle.addEventListener('touchstart', initiatePull);
 
@@ -422,9 +453,10 @@
             reel.classList.add('spinning');
 
             const oldWinner = reel.querySelector('.winning-item');
-            if(oldWinner) oldWinner.classList.remove('winning-item');
+            if(oldWinner) {
+                oldWinner.classList.remove('winning-item', 'faded');
+            }
 
-            // בחירת זוכה אך ורק מתוך הרשימה המסוננת
             const winnerName = activeNamesList[Math.floor(Math.random() * activeNamesList.length)];
             
             const reelSize = 80; 
@@ -453,7 +485,27 @@
             reel.style.transition = 'transform 5s cubic-bezier(0.1, 0.7, 0.1, 1)';
             reel.style.transform = `translateY(${stopPosition}px)`;
 
+            let lastTickIndex = -1;
+            function checkTick() {
+                if (!isSpinning) return;
+                const transformVal = window.getComputedStyle(reel).transform;
+                if (transformVal !== 'none') {
+                    const matrixValues = transformVal.split('(')[1].split(')')[0].split(',');
+                    const currentY = parseFloat(matrixValues[5] || matrixValues[13] || 0);
+                    const currentItemIndex = Math.floor(Math.abs(currentY) / itemHeight);
+                    
+                    if (currentItemIndex !== lastTickIndex) {
+                        playTickSound();
+                        lastTickIndex = currentItemIndex;
+                    }
+                }
+                tickFrameId = requestAnimationFrame(checkTick);
+            }
+            tickFrameId = requestAnimationFrame(checkTick);
+
             setTimeout(() => {
+                if (tickFrameId) cancelAnimationFrame(tickFrameId);
+
                 reel.classList.remove('spinning');
                 reel.classList.add('finished');
                 casing.classList.add('winner-effect');
@@ -461,6 +513,11 @@
                 const winningEl = reel.children[stopIndex];
                 if(winningEl) {
                     winningEl.classList.add('winning-item');
+
+                    // מעבר חזרה לצבע אפור מטושטש כעבור 3 שניות
+                    setTimeout(() => {
+                        winningEl.classList.add('faded');
+                    }, 3000);
                 }
 
                 playWinSound();
